@@ -49,26 +49,30 @@ def args():
 	parser.add_argument('-c', '--collect-inventory', type=str, default=False, nargs='?', const='inventory.json', help='Collects software inventory but does not conduct a vulnerability scanning.Software inventory will be saved as inventory.json in default. ./%(prog)s -r pc0001.json', dest='CollectInventory', required=False)
 	parser.add_argument('-p', '--proxy', type=str, default=False, help='Specifies a proxy server. Enter the URI of a network proxy server. ./%(prog)s -p localhost:8080', dest='proxy', required=False)
 	parser.add_argument('-t', '--proxy-type', type=str, default=False, help='Specifies a proxy type ./%(prog)s -p https', dest='proxytype', required=False)
-	parser.add_argument('--version', action='version', version='%(prog)s version ' + str(__version__))
+	parser.add_argument(
+		'--version',
+		action='version',
+		version=f'%(prog)s version {str(__version__)}',
+	)
 	args = parser.parse_args()
 
 def underConstruction():
 	print("This feature works with Python3")
 
 def sendRequest(queryData):
-	product_list = '"product_list": ' + queryData
+	product_list = f'"product_list": {queryData}'
 
 	os = platform.uname()[1]
 	arc = platform.uname()[4]
 
 	json_request_data = '{'
-	json_request_data += '"os": "' + os + '",'
-	json_request_data += '"arc": "' + arc + '",'
+	json_request_data += f'"os": "{os}",'
+	json_request_data += f'"arc": "{arc}",'
 	json_request_data += product_list
 	json_request_data +=  '}'
 
 	url = 'https://vulmon.com/scannerapi_vv211'
-	body = 'querydata=' + json_request_data
+	body = f'querydata={json_request_data}'
 	headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
 	if pV == 2:
@@ -79,18 +83,16 @@ def sendRequest(queryData):
 			request = urllib2.Request(url, body, headers)
 			result = urllib2.urlopen(request, timeout=5)
 			response = json.loads(result.read())
-	else:
-		if args.proxy:
-			if args.proxytype == 'https':
-				proxy = args.proxy
-				proxies = {'http' : 'https://'+proxy, 'https' : 'https://'+proxy}
-				response = (requests.post(url, data=body, headers=headers, proxies=proxies, verify=False)).json()
-			else:
-				proxy = args.proxy
-				proxies = {'http' : proxy, 'https' : proxy}
-				response = (requests.post(url, data=body, headers=headers, proxies=proxies, verify=False)).json()
+	elif args.proxy:
+		if args.proxytype == 'https':
+			proxy = args.proxy
+			proxies = {'http': f'https://{proxy}', 'https': f'https://{proxy}'}
 		else:
-			response = (requests.post(url, data=body, headers=headers)).json()
+			proxy = args.proxy
+			proxies = {'http' : proxy, 'https' : proxy}
+		response = (requests.post(url, data=body, headers=headers, proxies=proxies, verify=False)).json()
+	else:
+		response = (requests.post(url, data=body, headers=headers)).json()
 
 	return response
 
@@ -104,13 +106,25 @@ def outResults(q):
 	if response['status_message'] == 'success':
 		for i in range(0, len(response["results"])):
 			if args.verbose:
-				print(bcolors.OKGREEN + "[*] " + bcolors.ENDC + "Vulnerability Found!")
+				print(f"{bcolors.OKGREEN}[*] {bcolors.ENDC}Vulnerability Found!")
 
-				print(bcolors.OKGREEN + "[>] " + bcolors.ENDC + "Product: " + productFilter(response['results'][i]['query_string']))
+				print(
+					f"{bcolors.OKGREEN}[>] {bcolors.ENDC}Product: "
+					+ productFilter(response['results'][i]['query_string'])
+				)
 
 				for j in range(0, response['results'][i]['total_hits']):
 					try:
-						print(bcolors.OKGREEN + '[+] ' + bcolors.ENDC + 'CVEID: ' + response['results'][i]['vulnerabilities'][j]['cveid'] + '	Score: ' + str(response['results'][i]['vulnerabilities'][j]['cvssv2_basescore']) + '	URL: ' + response['results'][i]['vulnerabilities'][j]['url'])
+						print(
+							f'{bcolors.OKGREEN}[+] {bcolors.ENDC}CVEID: '
+							+ response['results'][i]['vulnerabilities'][j]['cveid']
+							+ '	Score: '
+							+ str(
+								response['results'][i]['vulnerabilities'][j]['cvssv2_basescore']
+							)
+							+ '	URL: '
+							+ response['results'][i]['vulnerabilities'][j]['url']
+						)
 						if response['results'][i]['vulnerabilities'][j]['exploits']:
 
 							print(bcolors.FAIL + '	[*]' + bcolors.ENDC + ' Available Exploits!')
@@ -124,15 +138,27 @@ def outResults(q):
 								print(bcolors.FAIL + "	[!] " + bcolors.ENDC + "Exploit ID: EDB" + edb[2] + "	URL: " + response['results'][i]['vulnerabilities'][j]['exploits'][z]['url'] + " (" + response['results'][i]['vulnerabilities'][j]['exploits'][z]['title'] + ")")
 					except Exception as e:
 						continue
-					print(bcolors.OKGREEN + '[+] ' + bcolors.ENDC + 'CVEID: ' + response['results'][i]['vulnerabilities'][j]['cveid'] + '	Score: ' + str(response['results'][i]['vulnerabilities'][j]['cvssv2_basescore']) + '	URL: ' + response['results'][i]['vulnerabilities'][j]['url'])
+					print(
+						f'{bcolors.OKGREEN}[+] {bcolors.ENDC}CVEID: '
+						+ response['results'][i]['vulnerabilities'][j]['cveid']
+						+ '	Score: '
+						+ str(
+							response['results'][i]['vulnerabilities'][j]['cvssv2_basescore']
+						)
+						+ '	URL: '
+						+ response['results'][i]['vulnerabilities'][j]['url']
+					)
 				print("\n")
 			elif args.exploit:
 				for j in range(0, response['results'][i]['total_hits']):
 					try:
 						if response['results'][i]['vulnerabilities'][j]['exploits']:
 
-							print(bcolors.OKGREEN + "[*] " + bcolors.ENDC + "Exploit Found!")
-							print(bcolors.OKGREEN + "[>] " + bcolors.ENDC + "Product: " + productFilter(response['results'][i]['query_string']))
+							print(f"{bcolors.OKGREEN}[*] {bcolors.ENDC}Exploit Found!")
+							print(
+								f"{bcolors.OKGREEN}[>] {bcolors.ENDC}Product: "
+								+ productFilter(response['results'][i]['query_string'])
+							)
 
 							for z in range(0, len(response['results'][i]['vulnerabilities'][j]['exploits'])):
 
@@ -140,10 +166,15 @@ def outResults(q):
 
 								edb = response['results'][i]['vulnerabilities'][j]['exploits'][z]['url'].split("=")
 
-								print(bcolors.OKGREEN + "[+] " + bcolors.ENDC + "Title: " + response['results'][i]['vulnerabilities'][j]['exploits'][z]['title'])
-								print(bcolors.FAIL + "[!] Exploit ID: EDB" + edb[2] + bcolors.ENDC + "\n")
+								print(
+									f"{bcolors.OKGREEN}[+] {bcolors.ENDC}Title: "
+									+ response['results'][i]['vulnerabilities'][j]['exploits'][z][
+										'title'
+									]
+								)
+								print(f"{bcolors.FAIL}[!] Exploit ID: EDB{edb[2]}{bcolors.ENDC}" + "\n")
 
-								getExploit("EDB" + edb[2])
+								getExploit(f"EDB{edb[2]}")
 					except Exception as e:
 						continue
 			elif args.onlyexploitable:
@@ -151,8 +182,11 @@ def outResults(q):
 					try:
 						if response['results'][i]['vulnerabilities'][j]['exploits']:
 
-							print(bcolors.OKGREEN + "[*] " + bcolors.ENDC + "Exploit Found!")
-							print(bcolors.OKGREEN + "[>] " + bcolors.ENDC + "Product: " + productFilter(response['results'][i]['query_string']))
+							print(f"{bcolors.OKGREEN}[*] {bcolors.ENDC}Exploit Found!")
+							print(
+								f"{bcolors.OKGREEN}[>] {bcolors.ENDC}Product: "
+								+ productFilter(response['results'][i]['query_string'])
+							)
 
 							for z in range(0, len(response['results'][i]['vulnerabilities'][j]['exploits'])):
 
@@ -160,19 +194,36 @@ def outResults(q):
 
 								edb = response['results'][i]['vulnerabilities'][j]['exploits'][z]['url'].split("=")
 
-								print(bcolors.OKGREEN + "[+] " + bcolors.ENDC + "Title: " + response['results'][i]['vulnerabilities'][j]['exploits'][z]['title'])
-								print(bcolors.FAIL + "[!] Exploit ID: EDB" + edb[2] + bcolors.ENDC + "\n")
+								print(
+									f"{bcolors.OKGREEN}[+] {bcolors.ENDC}Title: "
+									+ response['results'][i]['vulnerabilities'][j]['exploits'][z][
+										'title'
+									]
+								)
+								print(f"{bcolors.FAIL}[!] Exploit ID: EDB{edb[2]}{bcolors.ENDC}" + "\n")
 					except Exception as e:
 						continue
 
 			else:
-				print(bcolors.OKGREEN + "[*] " + bcolors.ENDC + "Vulnerability Found!")
+				print(f"{bcolors.OKGREEN}[*] {bcolors.ENDC}Vulnerability Found!")
 
-				print(bcolors.OKGREEN + "[>] " + bcolors.ENDC + "Product: " + productFilter(response['results'][i]['query_string']))
+				print(
+					f"{bcolors.OKGREEN}[>] {bcolors.ENDC}Product: "
+					+ productFilter(response['results'][i]['query_string'])
+				)
 
 				for j in range(0, response['results'][i]['total_hits']):
 					try:
-						print(bcolors.OKGREEN + '[+] ' + bcolors.ENDC + 'CVEID: ' + response['results'][i]['vulnerabilities'][j]['cveid'] + '	Score: ' + str(response['results'][i]['vulnerabilities'][j]['cvssv2_basescore']) + '	URL: ' + response['results'][i]['vulnerabilities'][j]['url'])
+						print(
+							f'{bcolors.OKGREEN}[+] {bcolors.ENDC}CVEID: '
+							+ response['results'][i]['vulnerabilities'][j]['cveid']
+							+ '	Score: '
+							+ str(
+								response['results'][i]['vulnerabilities'][j]['cvssv2_basescore']
+							)
+							+ '	URL: '
+							+ response['results'][i]['vulnerabilities'][j]['url']
+						)
 						if response['results'][i]['vulnerabilities'][j]['exploits']:
 
 							print(bcolors.FAIL + '	[*]' + bcolors.ENDC + ' Available Exploits!')
@@ -186,36 +237,50 @@ def outResults(q):
 								print(bcolors.FAIL + "	[!] " + bcolors.ENDC + "Title: " + response['results'][i]['vulnerabilities'][j]['exploits'][z]['title'] + "	URL: " + response['results'][i]['vulnerabilities'][j]['exploits'][z]['url'])
 					except Exception as e:
 						continue
-					print(bcolors.OKGREEN + '[+] ' + bcolors.ENDC + 'CVEID: ' + response['results'][i]['vulnerabilities'][j]['cveid'] + '	Score: ' + str(response['results'][i]['vulnerabilities'][j]['cvssv2_basescore']) + '	URL: ' + response['results'][i]['vulnerabilities'][j]['url'])
+					print(
+						f'{bcolors.OKGREEN}[+] {bcolors.ENDC}CVEID: '
+						+ response['results'][i]['vulnerabilities'][j]['cveid']
+						+ '	Score: '
+						+ str(
+							response['results'][i]['vulnerabilities'][j]['cvssv2_basescore']
+						)
+						+ '	URL: '
+						+ response['results'][i]['vulnerabilities'][j]['url']
+					)
 				print("\n")
 	elif response['status'] == '1015':
 		print(response['message'])
-	else:
-		pass
 
 def getExploit(exploit_ID):
-	url = 'https://vulmon.com/downloadexploit?qid=' + exploit_ID
+	url = f'https://vulmon.com/downloadexploit?qid={exploit_ID}'
 	if pV == 2:
-		urllib.urlretrieve(url, ("Exploit_" + exploit_ID))
+		urllib.urlretrieve(url, f"Exploit_{exploit_ID}")
 	else:
-		urllib.request.urlretrieve(url, ("Exploit_" + exploit_ID))
+		urllib.request.urlretrieve(url, f"Exploit_{exploit_ID}")
 	if args.exploit_ID:
-		print(bcolors.OKBLUE + "[Info] " + bcolors.ENDC + "Exploit Mode. Exploit downloading...\n")
-		print(bcolors.OKGREEN + "[>] Filename: " + bcolors.ENDC + "Exploit_" + exploit_ID)
-		print(bcolors.HEADER + "[Status] " + bcolors.ENDC + "Exploit Downloaded!\n" + bcolors.ENDC)
+		print(
+			f"{bcolors.OKBLUE}[Info] {bcolors.ENDC}"
+			+ "Exploit Mode. Exploit downloading...\n"
+		)
+		print(f"{bcolors.OKGREEN}[>] Filename: {bcolors.ENDC}Exploit_{exploit_ID}")
+		print(
+			f"{bcolors.HEADER}[Status] {bcolors.ENDC}"
+			+ "Exploit Downloaded!\n"
+			+ bcolors.ENDC
+		)
 
 def ReadFromFile(InventoryOutFile):
 	count = 0
-	print("Reading software inventory from "+InventoryOutFile)
+	print(f"Reading software inventory from {InventoryOutFile}")
 	with open(InventoryOutFile) as json_file:
 		products = json.load(json_file)
 	for a in products:
 		if count == 0:
 			queryData = '['
 		queryData += '{'
-		queryData += '"product": "' + a[0] + '",'
-		queryData += '"version": "' + a[1] + '",'
-		queryData += '"arc": "' + a[2] + '"'
+		queryData += f'"product": "{a[0]}",'
+		queryData += f'"version": "{a[1]}",'
+		queryData += f'"arc": "{a[2]}"'
 		queryData += '},'
 		count += 1
 		if count == 100:
@@ -228,19 +293,16 @@ def getProductList():
 	dpkg = "dpkg-query -W -f='${Package} ${Version} ${Architecture}\n'"
 	action = subprocess.Popen(dpkg, shell = True, stdout = subprocess.PIPE)
 	results = action.communicate()[0]
-	if pV == 2:
-		tempList = str(results).split('\n')
-	else:
-		tempList = str(results).split('\\n')
+	tempList = str(results).split('\n') if pV == 2 else str(results).split('\\n')
 	for i in range(0,len(tempList)-1):
 		productList.append(tempList[i].split(" "))
 	if args.CollectInventory:
-		print("Saving software inventory to " +args.CollectInventory)
+		print(f"Saving software inventory to {args.CollectInventory}")
 		with open(args.CollectInventory, 'w') as outfile:
 			json.dump(productList, outfile)
 		sys.exit(0)
 	if args.InventoryInFile:
-		print("Saving software inventory to " +args.InventoryInFile)
+		print(f"Saving software inventory to {args.InventoryInFile}")
 		with open(args.InventoryInFile, 'w') as outfile:
 			json.dump(productList, outfile)
 
